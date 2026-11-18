@@ -183,28 +183,89 @@ body {
 
 .msg-time { font-size: 11px; color: var(--timestamp); padding: 0 4px; font-weight: 300; }
 
-/* Thinking block */
+/* Thinking block — Claude-style panel */
+.thinking-block {
+  margin-top: 6px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--thinking-border);
+  background: var(--thinking-bg);
+  transition: border-color 0.2s;
+}
+.thinking-block:hover { border-color: var(--send-btn); }
+
 .thinking-toggle {
   background: none; border: none;
   color: var(--timestamp);
-  font-size: 12px; font-weight: 300;
-  cursor: pointer; padding: 2px 4px;
+  font-size: 13px; font-weight: 400;
+  cursor: pointer;
+  padding: 10px 14px;
   font-family: inherit;
   transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
 }
 .thinking-toggle:hover { color: var(--bubble-theirs-text); }
 
+.thinking-toggle-icon {
+  display: inline-flex;
+  transition: transform 0.25s ease;
+  font-size: 10px;
+  opacity: 0.6;
+}
+.thinking-toggle-icon.open {
+  transform: rotate(90deg);
+}
+
+.thinking-toggle-label {
+  flex: 1;
+}
+
+.thinking-toggle-hint {
+  font-size: 11px;
+  opacity: 0.5;
+  font-weight: 300;
+}
+
 .thinking-content {
-  background: var(--thinking-bg);
-  border-left: 2px solid var(--thinking-border);
-  padding: 8px 12px;
-  margin-top: 4px;
-  border-radius: 0 8px 8px 0;
+  padding: 0 14px;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--timestamp);
   white-space: pre-wrap;
   word-break: break-word;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+}
+.thinking-content.open {
+  padding: 0 14px 12px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+.thinking-content.open::-webkit-scrollbar { width: 3px; }
+.thinking-content.open::-webkit-scrollbar-thumb { background: var(--subtle); border-radius: 2px; }
+
+.thinking-divider {
+  height: 1px;
+  background: var(--thinking-border);
+  margin: 0;
+}
+
+/* Thinking shimmer animation while loading */
+@keyframes thinking-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.thinking-loading .thinking-toggle-label {
+  background: linear-gradient(90deg, var(--timestamp) 25%, var(--bubble-theirs-text) 50%, var(--timestamp) 75%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-shimmer 2s ease-in-out infinite;
 }
 
 /* Typing indicator */
@@ -386,21 +447,34 @@ function addMessageToDOM(text, isMine, animate = true) {
     content.appendChild(bubble);
 
     if (thinking) {
+      const block = document.createElement('div');
+      block.className = 'thinking-block';
+
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'thinking-toggle';
-      toggleBtn.textContent = '💭 內心活動';
+      toggleBtn.innerHTML = `<span class="thinking-toggle-icon">▶</span><span class="thinking-toggle-label">澄的內心活動</span><span class="thinking-toggle-hint"></span>`;
+
+      const divider = document.createElement('div');
+      divider.className = 'thinking-divider';
+      divider.hidden = true;
+
       const thinkDiv = document.createElement('div');
       thinkDiv.className = 'thinking-content';
       thinkDiv.textContent = thinking;
-      thinkDiv.hidden = true;
+
+      const lines = thinking.split('\n').length;
+      toggleBtn.querySelector('.thinking-toggle-hint').textContent = `${lines} 行`;
 
       toggleBtn.addEventListener('click', () => {
-        thinkDiv.hidden = !thinkDiv.hidden;
-        toggleBtn.textContent = thinkDiv.hidden ? '💭 內心活動' : '💭 收起';
+        const isOpen = thinkDiv.classList.toggle('open');
+        toggleBtn.querySelector('.thinking-toggle-icon').classList.toggle('open', isOpen);
+        divider.hidden = !isOpen;
       });
 
-      content.appendChild(toggleBtn);
-      content.appendChild(thinkDiv);
+      block.appendChild(toggleBtn);
+      block.appendChild(divider);
+      block.appendChild(thinkDiv);
+      content.appendChild(block);
     }
   }
 
